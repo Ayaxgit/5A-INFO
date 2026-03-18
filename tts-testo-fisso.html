@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lettore Vocale</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0e11;
+      --surface: #16161b;
+      --border: #2a2a35;
+      --accent: #c8a96e;
+      --text: #e8e4dc;
+      --text-muted: #7a7a8a;
+      --green: #4ecb71;
+    }
+
+    body {
+      font-family: 'DM Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      opacity: 0.4;
+    }
+
+    .container {
+      position: relative;
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    header { text-align: center; }
+
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    header h1 em {
+      color: var(--accent);
+      font-style: italic;
+    }
+
+    /* Text card */
+    .text-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      line-height: 1.85;
+      color: var(--text);
+    }
+
+    /* Controls */
+    .controls {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+      min-width: 130px;
+    }
+
+    .field label {
+      font-size: 0.63rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    select, input[type="range"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    select:focus { border-color: var(--accent); }
+
+    input[type="range"] {
+      padding: 4px 0;
+      cursor: pointer;
+      accent-color: var(--accent);
+      border: none;
+      background: transparent;
+    }
+
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .range-row input { flex: 1; }
+    .range-val {
+      font-size: 0.75rem;
+      color: var(--accent);
+      min-width: 30px;
+      text-align: right;
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      border-radius: 8px;
+      cursor: pointer;
+      border: none;
+      padding: 10px 22px;
+      transition: all 0.2s;
+    }
+
+    .btn-play {
+      background: var(--accent);
+      color: #0e0e11;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .btn-play:hover { filter: brightness(1.12); }
+    .btn-play:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-stop {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .btn-stop:hover { border-color: #e05c5c; color: #e05c5c; }
+    .btn-stop:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Voice indicator */
+    .indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      padding-top: 4px;
+    }
+
+    .bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 16px;
+    }
+
+    .bars span {
+      display: block;
+      width: 3px;
+      border-radius: 2px;
+      background: currentColor;
+      height: 4px;
+    }
+
+    .indicator.speaking { color: var(--green); }
+
+    .indicator.speaking .bars span:nth-child(1) { animation: bar 0.8s ease-in-out infinite; }
+    .indicator.speaking .bars span:nth-child(2) { animation: bar 0.8s ease-in-out 0.15s infinite; height: 10px; }
+    .indicator.speaking .bars span:nth-child(3) { animation: bar 0.8s ease-in-out 0.3s infinite; height: 14px; }
+    .indicator.speaking .bars span:nth-child(4) { animation: bar 0.8s ease-in-out 0.45s infinite; height: 8px; }
+
+    @keyframes bar {
+      0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+      50%       { transform: scaleY(1);   opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Lettore <em>Vocale</em></h1>
+  </header>
+
+  <!-- Testo fisso -->
+  <div class="text-card" id="textContent">
+    La natura non conosce soste e punisce l'inerzia.
+    Il coraggio non è assenza di paura, ma la consapevolezza che qualcosa conta più della paura stessa.
+    Ogni alba porta con sé la possibilità di ricominciare: non perché il passato sia cancellato,
+    ma perché il futuro non è ancora scritto. Ascolta il silenzio — spesso parla più chiaramente
+    di qualsiasi parola.
+  </div>
+
+  <!-- Controlli -->
+  <div class="controls">
+
+    <div class="row">
+      <div class="field">
+        <label>Voce</label>
+        <select id="voiceSelect"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Velocità</label>
+        <div class="range-row">
+          <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
+          <span class="range-val" id="rateVal">1.0×</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Tono</label>
+        <div class="range-row">
+          <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1">
+          <span class="range-val" id="pitchVal">1.0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-play" id="playBtn">▶ Ascolta</button>
+      <button class="btn-stop" id="stopBtn" disabled>⏹ Stop</button>
+    </div>
+
+    <div class="indicator" id="indicator">
+      <div class="bars">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <span id="statusText">pronto</span>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const playBtn    = document.getElementById('playBtn');
+  const stopBtn    = document.getElementById('stopBtn');
+  const voiceSel   = document.getElementById('voiceSelect');
+  const rateEl     = document.getElementById('rate');
+  const pitchEl    = document.getElementById('pitch');
+  const rateVal    = document.getElementById('rateVal');
+  const pitchVal   = document.getElementById('pitchVal');
+  const indicator  = document.getElementById('indicator');
+  const statusText = document.getElementById('statusText');
+  const textContent = document.getElementById('textContent');
+
+  // Populate voices
+  function loadVoices() {
+    const voices = speechSynthesis.getVoices();
+    voiceSel.innerHTML = '';
+    const sorted = [...voices].sort((a, b) => a.lang.startsWith('it') ? -1 : b.lang.startsWith('it') ? 1 : 0);
+    sorted.forEach((v, i) => {
+      const o = document.createElement('option');
+      o.value = i;
+      o.textContent = `${v.name} (${v.lang})`;
+      voiceSel.appendChild(o);
+    });
+  }
+
+  speechSynthesis.addEventListener('voiceschanged', loadVoices);
+  loadVoices();
+
+  // Sliders
+  rateEl.addEventListener('input',  () => rateVal.textContent  = parseFloat(rateEl.value).toFixed(1) + '×');
+  pitchEl.addEventListener('input', () => pitchVal.textContent = parseFloat(pitchEl.value).toFixed(1));
+
+  // Play
+  playBtn.addEventListener('click', () => {
+    speechSynthesis.cancel();
+    const voices = speechSynthesis.getVoices();
+    const utter = new SpeechSynthesisUtterance(textContent.innerText.trim());
+    utter.voice = voices[parseInt(voiceSel.value)];
+    utter.rate  = parseFloat(rateEl.value);
+    utter.pitch = parseFloat(pitchEl.value);
+
+    utter.onstart = () => {
+      indicator.classList.add('speaking');
+      statusText.textContent = 'parlando…';
+      playBtn.disabled = true;
+      stopBtn.disabled = false;
+    };
+
+    utter.onend = utter.onerror = () => {
+      indicator.classList.remove('speaking');
+      statusText.textContent = 'pronto';
+      playBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+
+    speechSynthesis.speak(utter);
+  });
+
+  // Stop
+  stopBtn.addEventListener('click', () => {
+    speechSynthesis.cancel();
+    indicator.classList.remove('speaking');
+    statusText.textContent = 'pronto';
+    playBtn.disabled = false;
+    stopBtn.disabled = true;
+  });
+</script>
+</body>
+</html>
