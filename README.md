@@ -23,5 +23,6 @@ Una volta finite le modifiche, caricate la nuova versione con il commit e la inv
 
 ## Pull Request
 Pull Request serve per proporre delle modifiche al progetto ma senza modificare la versione originale, ovvero in un branch separato.
+
 Una volta finite le modifiche, aprite un Pull request con una descrizione su cosa avete cambiato e caricate i file,
 quando il proprietario della repo controlla il codice e gli va bene clicca su Merge e le modifiche verranno applicate.
