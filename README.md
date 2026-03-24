@@ -1,5 +1,5 @@
-# 5A-INFO
-pubblicate le vostre modifiche dei vostri codici qui cosi possiamo vedere le varie modifiche e organizzarci
+# Digital Citizen AI - App della 5°A Inf.
+Pubblicate le modifiche dei vostri codici in questa repo per vederle e organizzarci
 
 # Tutorial
 ## Clonare la repository
